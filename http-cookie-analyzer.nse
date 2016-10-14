@@ -7,6 +7,7 @@ local table = require "table"
 local http = require "http"
 local string = require "string"
 local os = require "os"
+local date = require "date"
 
 description = [[
 	cosas
@@ -18,34 +19,47 @@ categories = {"discovery", "safe"}
 
 portrule = shortport.http
 
+local function stripURL(url)
+
+        url = string.gsub(url, "https://", "")
+        url = string.gsub(url, "http://", "")
+        url = string.gsub(url, ":%d*", "")
+        url = string.gsub(url, "www.", "")
+        url = string.gsub(url, "?*", "")
+
+
+        local slash_pos = string.find(url, "/")
+        if(not(slash_pos)) then
+                url = url .. "/"
+                slash_pos = string.len(url) - 1
+        end
+        local domain = "." .. string.sub(url, 0 , slash_pos - 1 )
+        local path = string.sub(url, slash_pos)
+	
+
+	return domain, path
+end
+
 local function analyzeCookie(cookie, url)
-	local url = tostring(url)
-
-	url = string.gsub(url, "https://", "")
-	url = string.gsub(url, "http://", "")
-	url = string.gsub(url, ":%d*", "")
-	url = string.gsub(url, "www.", "")
-	url = string.gsub(url, "?%c*", "")	
-
-
-	local slash_pos = string.find(url, "/")
-	if(not(slash_pos)) then
-		url = url .. "/"
-		slash_pos = string.len(url) - 1 
-	end
-	local domain = "." .. string.sub(url, 0 , slash_pos - 1 )
-	local path = string.sub(url, slash_pos)
-
+	local domain, path = stripURL(tostring(url))
 	if(cookie.path ~= path) then
 		print("loose path: " .. cookie.path .. "  " .. path)
 	end
 	if(cookie.domain ~= domain) then
-		print("loose domain" .. cookie.domain .. "  " .. domain)
+		print("loose domain: " .. cookie.domain .. "  " .. domain)
 	end
+	
+	local d1 = date('Sat, 29 Oct 1994 19:43:31 GMT')                                                                                               
 
-	print(os.date())
-	print(cookie.expires)
-
+	local now = date(true)
+	local cookie_expiry = date(tostring(cookie.expires))
+	if(cookie_expiry < date("01 Jan 2000")) then
+		cookie_expiry = cookie_expiry:addyears(100) 
+	end
+	local days = date.diff(cookie_expiry, now):spandays()
+	if(days >= 365) then
+		print("More than a year expiration: " .. cookie_expiry)
+	end
 end
 
 action = function(host, port)
