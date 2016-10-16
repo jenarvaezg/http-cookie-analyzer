@@ -47,20 +47,27 @@ local function analyzeCookie(cookie, url, set_cookie, port)
 		print("loose path: " .. cookie.path .. "  " .. path)
 	end
 	if(cookie.domain ~= domain) then
-		print("loose domain: " .. cookie.domain .. "  " .. domain)
+		if cookie.domain == nil then
+                        cookie.domain = "EMPTY"
+                end
+                print("loose domain: " .. cookie.domain .. "  " .. domain)
 	end
 	
-	local d1 = date('Sat, 29 Oct 1994 19:43:31 GMT')                                                                                               
 
-	local now = date(true)
-	local cookie_expiry = date(tostring(cookie.expires))
-	if(cookie_expiry < date("01 Jan 2000")) then
-		cookie_expiry = cookie_expiry:addyears(100) 
-	end
-	local days = date.diff(cookie_expiry, now):spandays()
-	if(days >= 365) then
-		print("More than a year expiration: " .. cookie_expiry)
-	end
+        if cookie.expires ~= nil then
+                 
+	        local d1 = date('Sat, 29 Oct 1994 19:43:31 GMT')                                                                                               
+	        local now = date(true)
+	        local cookie_expiry = date(tostring(cookie.expires))
+	        if(cookie_expiry < date("01 Jan 2000")) then
+		        cookie_expiry = cookie_expiry:addyears(100) 
+	        end
+        
+	        local days = date.diff(cookie_expiry, now):spandays()
+	        if(days >= 365) then
+		        print("More than a year expiration: " .. cookie_expiry)
+        	end
+        end
 
         if port == 80 then
                 print("This cookie can be sent through unencrypted channels!")
