@@ -42,19 +42,27 @@ local function stripURL(url)
 end
 
 local function analyzeCookie(cookie, url, set_cookie, port)
-	local domain, path = stripURL(tostring(url))
-	if(cookie.path ~= path) then
-		print("loose path: " .. cookie.path .. "  " .. path)
+
+        local domain, path = stripURL(tostring(url))	
+        local info = "Cookie: " .. cookie.name .. " at " .. tostring(url) .. "\n"
+        
+        if(cookie.path ~= path) then
+		info = info .. "\tLoose path found: " .. cookie.path .. " at " .. path .. "\n"
+                -- print("loose path: " .. cookie.path .. "  " .. path)
 	end
-	if(cookie.domain ~= domain) then
+	
+        if(cookie.domain ~= domain) then
 		if cookie.domain == nil then
                         cookie.domain = "EMPTY"
 
                         if string.find(cookie.name, "[sS][eE][sS][sS][iI][oO][nN]") then
-                                print("This might be a well configured session cookie. Check OWASP Session Management Cheat Sheet")
+                                info = info .. "\tNOTE: This might be a well configured session cookie. Check OWASP Session Management Cheat Sheet.\n"
+                                --print("This might be a well configured session cookie. Check OWASP Session Management Cheat Sheet")
                         end
                 end
-                print("loose domain: " .. cookie.domain .. "  " .. domain)
+
+                info = info .. "\tLoose domain found: " .. cookie.domain .. " at " .. domain .. "\n"
+                --print("loose domain: " .. cookie.domain .. "  " .. domain)
 	end
 	
 
@@ -69,19 +77,23 @@ local function analyzeCookie(cookie, url, set_cookie, port)
         
 	        local days = date.diff(cookie_expiry, now):spandays()
 	        if(days >= 365) then
-		        print("More than a year expiration: " .. cookie_expiry)
+		        info = info .. "\tLong-term persistent cookie: " .. cookie_expiry .. "\n"
+                        --print("More than a year expiration: " .. cookie_expiry)
         	end
         end
 
-        if port == 80 then
-                print("This cookie can be sent through unencrypted channels!")
-        elseif not string.find(set_cookie, "secure") then
-                print("This cookie can be sent through unencrypted channels!")
+        if port == 80 or not string.find(set_cookie, "secure") then
+                info = info .. "\tThis cookie can be sent through unencrypted channels!\n"
+                --print("This cookie can be sent through unencrypted channels!")
         end
 
         if not string.find(set_cookie, "httponly") then
-               print("Cookie exposed to XSS attacks!") 
+               info = info .. "\tCookie exposed to XSS attacks(httpOnly flag not set).\n"
+               --print("Cookie exposed to XSS attacks!") 
         end
+
+        info = info .. "\n"
+        return info
 end
 
 action = function(host, port)
@@ -94,6 +106,7 @@ action = function(host, port)
 	local cookie_urls = tab.new(6)
 	tab.addrow(cookie_urls, "url", "name", "value", "domain", "path", "expires")
 
+        local cookie_info = ""
 	while(true) do
 		local status, r = crawler:crawl()
 		if(not(status)) then
@@ -108,7 +121,7 @@ action = function(host, port)
                 if(#cookies > 0) then
 			for _, cookie in ipairs(cookies) do
                                 local set_cookie = r.response.header["set-cookie"]
-				analyzeCookie(cookie, r.url, set_cookie, port.number) 
+				cookie_info = cookie_info ..  analyzeCookie(cookie, r.url, set_cookie, port.number) 
                                 tab.addrow(cookie_urls, r.url, cookie.name, cookie.value, cookie.domain, cookie.path, cookie.expires)
 			end
 		end
@@ -117,7 +130,7 @@ action = function(host, port)
 	if(#cookie_urls > 1) then
 		local result = {tab.dump(cookie_urls)}
 		result.name = crawler:getLimitations()
-		return stdnse.format_output(true, result)
+	        return stdnse.format_output(true, result) .. cookie_info
 	end
 
 end
