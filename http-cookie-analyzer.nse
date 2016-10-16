@@ -10,14 +10,15 @@ local os = require "os"
 local date = require "date"
 
 description = [[
-	cosas
+        Spiders a web site to find missconfigured cookies. Based on the OWASP documentation.
+        https://www.owasp.org/index.php/Testing_for_cookies_attributes_(OTG-SESS-002)
 ]]
 
-author = "a y b"
+author = "José Enrique Narvaez y David Catalán Alegre"
 license = "eh"
 categories = {"discovery", "safe"}
 
-portrule = shortport.http
+portrule = shortport.port_or_service({80, 443}, {"http","https"})
 
 local function stripURL(url)
 
@@ -40,7 +41,7 @@ local function stripURL(url)
 	return domain, path
 end
 
-local function analyzeCookie(cookie, url)
+local function analyzeCookie(cookie, url, set_cookie)
 	local domain, path = stripURL(tostring(url))
 	if(cookie.path ~= path) then
 		print("loose path: " .. cookie.path .. "  " .. path)
@@ -60,6 +61,10 @@ local function analyzeCookie(cookie, url)
 	if(days >= 365) then
 		print("More than a year expiration: " .. cookie_expiry)
 	end
+
+        if not string.find(set_cookie, "httponly") then
+               print("Cookie exposed to XSS attacks!") 
+        end
 end
 
 action = function(host, port)
@@ -84,8 +89,9 @@ action = function(host, port)
 		local cookies = r.response.cookies
 		if(#cookies > 0) then
 			for _, cookie in ipairs(cookies) do
-				analyzeCookie(cookie, r.url)
-				tab.addrow(cookie_urls, r.url, cookie.name, cookie.value, cookie.domain, cookie.path, cookie.expires)
+                                local set_cookie = r.response.header["set-cookie"]
+				analyzeCookie(cookie, r.url, set_cookie) 
+                                tab.addrow(cookie_urls, r.url, cookie.name, cookie.value, cookie.domain, cookie.path, cookie.expires)
 			end
 		end
 	end
