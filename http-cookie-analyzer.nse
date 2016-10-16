@@ -49,6 +49,10 @@ local function analyzeCookie(cookie, url, set_cookie, port)
 	if(cookie.domain ~= domain) then
 		if cookie.domain == nil then
                         cookie.domain = "EMPTY"
+
+                        if string.find(cookie.name, "[sS][eE][sS][sS][iI][oO][nN]") then
+                                print("This might be a well configured session cookie. Check OWASP Session Management Cheat Sheet")
+                        end
                 end
                 print("loose domain: " .. cookie.domain .. "  " .. domain)
 	end
