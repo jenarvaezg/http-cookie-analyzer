@@ -41,7 +41,7 @@ local function stripURL(url)
 	return domain, path
 end
 
-local function analyzeCookie(cookie, url, set_cookie)
+local function analyzeCookie(cookie, url, set_cookie, port)
 	local domain, path = stripURL(tostring(url))
 	if(cookie.path ~= path) then
 		print("loose path: " .. cookie.path .. "  " .. path)
@@ -61,6 +61,12 @@ local function analyzeCookie(cookie, url, set_cookie)
 	if(days >= 365) then
 		print("More than a year expiration: " .. cookie_expiry)
 	end
+
+        if port == 80 then
+                print("This cookie can be sent through unencrypted channels!")
+        elseif not string.find(set_cookie, "secure") then
+                print("This cookie can be sent through unencrypted channels!")
+        end
 
         if not string.find(set_cookie, "httponly") then
                print("Cookie exposed to XSS attacks!") 
@@ -87,10 +93,11 @@ action = function(host, port)
 			end
 		end
 		local cookies = r.response.cookies
-		if(#cookies > 0) then
+                
+                if(#cookies > 0) then
 			for _, cookie in ipairs(cookies) do
                                 local set_cookie = r.response.header["set-cookie"]
-				analyzeCookie(cookie, r.url, set_cookie) 
+				analyzeCookie(cookie, r.url, set_cookie, port.number) 
                                 tab.addrow(cookie_urls, r.url, cookie.name, cookie.value, cookie.domain, cookie.path, cookie.expires)
 			end
 		end
